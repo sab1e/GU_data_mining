@@ -4,6 +4,22 @@ from sqlalchemy.orm import sessionmaker
 from models import Base, Post, Writer, Tag, Hub
 from habra_parser import HabraBestDayParser
 
+
+def get_or_create(session, model, **kwargs):
+    instance = session.query(model).filter_by(**kwargs).first()
+    if instance:
+        return instance
+    else:
+        instance = model(**kwargs)
+        session.add(instance)
+        try:
+            session.commit()
+            return instance
+        except Exception as e:
+            print(e)
+            session.rollback()
+
+
 if __name__ == '__main__':
     parser = HabraBestDayParser()
     parser.parse_rows()
@@ -16,18 +32,22 @@ if __name__ == '__main__':
     session = session_db()
 
     for post in parser.post_data:
-        writer = Writer(post.get('writer_name'),
-                        post.get('writer_url'))
-        tags = [Tag(f'{tag}', f'{url}') for tag, url in post.get('tags').items()]
-        hubs = [Hub(f'{hub}', f'{url}') for hub, url in post.get('hubs').items()]
-        post = Post(post.get('title'), post.get('url'), writer.id)
-        print(writer.name)
-        session.add(writer)
-        session.add(post)
+        writer = get_or_create(session, Writer,
+                               name=post.get('writer_name'),
+                               url=post.get('writer_url'))
+        tags = [get_or_create(session, Tag, name=tag, url=url)
+                for tag, url in post.get('tags').items()]
+        hubs = [get_or_create(session, Hub, name=hub, url=url)
+                for hub, url in post.get('hubs').items()]
+        post = get_or_create(session, Post,
+                             title=post.get('title'),
+                             url=post.get('url'),
+                             writer_id=writer.id)
 
-    try:
+        post.tag.extend(tags)
+        post.hub.extend(hubs)
+
+        session.add(post)
         session.commit()
-    except Exception as e:
-        print(e)
-    finally:
-        session.close()
+
+    session.close()

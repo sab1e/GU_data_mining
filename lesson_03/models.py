@@ -38,7 +38,7 @@ class Post(Base):
         self.url = url
         self.writer_id = writer_id
         self.tag.extend(tags)
-        self.tag.extend(hubs)
+        self.hub.extend(hubs)
 
 
 class Writer(Base):

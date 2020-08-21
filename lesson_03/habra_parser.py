@@ -34,7 +34,7 @@ class HabraBestDayParser:
         self.post_links.update(posts_links)
 
     def post_page_parse(self):
-        for url in self.post_links[5]:
+        for url in self.post_links:
             if url in self.visited_urls:
                 continue
             response = requests.get(url)
@@ -52,7 +52,7 @@ class HabraBestDayParser:
 
         author = soup.find('a', attrs={'class': 'user-info__nickname'})
         result['writer_name'] = author.text
-        result['writer_url'] = author.get('href')
+        result['writer_url'] = f'{self.domain}{author.get("href")}'
 
         tags_ul = soup.find('ul', attrs={'class': 'js-post-tags'})
         tags_a = tags_ul.find_all('a', attrs={'rel': 'tag'})
