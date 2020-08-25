@@ -1,4 +1,7 @@
 import scrapy
+import json
+
+from pymongo import MongoClient
 
 
 class AvitoSpider(scrapy.Spider):
@@ -14,6 +17,11 @@ class AvitoSpider(scrapy.Spider):
                'a[@class="snippet-link"][@itemprop="url"]/@href'
 
     }
+
+    def __init__(self, **kwargs):
+        self.client = MongoClient()
+        self.db = self.client['parse_avito']
+        self.collections = self.db['ads_data']
 
     def parse(self, response, start=True):
         if start:
@@ -35,37 +43,59 @@ class AvitoSpider(scrapy.Spider):
             )
 
     def ads_parse(self, response):
-        title = response.css(
-            'h1.title-info-title span.title-info-title-text::text').extract()
-        img_url = response.css(
+        ads_data = {
+            'url': response.url
+        }
+
+        ads_data['title'] = response.css(
+            'h1.title-info-title '
+             'span.title-info-title-text::text').extract_first()
+
+        ads_data['img_url'] = response.css(
             'div.gallery-list-wrapper '
             'ul.gallery-list.js-gallery-list '
             'img::attr("src")').extract()
+
+        price = {'price': response.xpath(
+            '//div[@id="price-value"]/'
+            'span[contains(@class, "price-value-string")]/'
+            'span[@class="js-item-price"]/@content').extract_first(),
+                 'cash_sign': response.xpath(
+                 '//div[@id="price-value"]/'
+                 'span[contains(@class, "price-value-string")]//'
+                 'span[@class="font_arial-rub"]/text()').extract_first()}
+        ads_data['price'] = price
+
+        ads_data['address'] = response.css(
+            'div.item-address '
+            'span.item-address__string::text').\
+            extract_first().replace('\n', '').strip()
+
         params_names = response.css('ul.item-params-list '
                                     'li.item-params-list-item '
                                     'span::text').extract()
-        params_values = response.css('div.item-params '
+        params_values_all = response.css('div.item-params '
                                      'ul.item-params-list '
                                      'li::text').extract()
-        address = response.css('div.item-address '
-                               'span.item-address__string::text').extract()
-        price = response.xpath(
-            '//div[@id="price-value"]/'
-            'span[contains(@class, "price-value-string")]/'
-            'span[@class="js-item-price"]/@content').extract_first()
+        params_values = [value for value in params_values_all if value != ' ']
 
-        cash_sign = response.xpath(
-            '//div[@id="price-value"]/'
-            'span[contains(@class, "price-value-string")]//'
-            'span[@class="font_arial-rub"]/text()').extract_first()
+        params = [{'name': param, 'value':value} for param, value in zip(params_names, params_values)]
 
-        print(1)
-        yield response.follow(
-                'https://m.avito.ru/tyumen/kvartiry/tel:phone',
-                headers={
-                    'User-Agent': 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.105 Mobile Safari/537.36'},
-                callback=self.phone_parse
-            )
+        ads_data['params'] = params
 
-    def phone_parse(self, response):
-        print(1)
+    #     req = scrapy.http.Request(url='https://m.avito.ru/api/1/items/1965146039/phone?key=af0deccbgcgidddjgnvljitntccdduijhdinfgjgfjir')
+    #     resp = scrapy.http.Response(
+    #             url='https://m.avito.ru/api/1/items/1965146039/phone?key=af0deccbgcgidddjgnvljitntccdduijhdinfgjgfjir',
+    #             request=req
+    #         )
+    #     data = json.loads(resp.text)
+    #     print(1)
+    #
+    # def phone_parse(self, response):
+    #     print(1)
+    #     return json.loads(response.text)
+
+        self.save_to_db(ads_data)
+
+    def save_to_db(self, ads_data):
+        self.collections.insert_one(ads_data)
