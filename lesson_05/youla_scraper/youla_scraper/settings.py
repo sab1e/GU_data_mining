@@ -36,7 +36,7 @@ DOWNLOAD_DELAY = 5
 COOKIES_ENABLED = True
 
 # Disable Telnet Console (enabled by default)
-#TELNETCONSOLE_ENABLED = False
+TELNETCONSOLE_ENABLED = False
 
 # Override the default request headers:
 DEFAULT_REQUEST_HEADERS = {
@@ -64,9 +64,12 @@ DEFAULT_REQUEST_HEADERS = {
 
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
-#ITEM_PIPELINES = {
-#    'youla_scraper.pipelines.YoulaScraperPipeline': 300,
-#}
+IMAGES_STORE = 'images'
+
+ITEM_PIPELINES = {
+   'youla_scraper.pipelines.YoulaImagePipline': 100,
+   'youla_scraper.pipelines.YoulaScraperPipeline': 300,
+}
 
 # Enable and configure the AutoThrottle extension (disabled by default)
 # See https://docs.scrapy.org/en/latest/topics/autothrottle.html
