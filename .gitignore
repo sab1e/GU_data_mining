@@ -1,1 +1,4 @@
 /venv/
+/lesson_06/.env
+.idea
+.gitignore
