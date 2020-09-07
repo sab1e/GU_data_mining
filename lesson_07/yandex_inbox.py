@@ -20,7 +20,6 @@ class YandexMail:
         self.__login = kwargs['login']
         self.__password = kwargs['password']
         self.driver = webdriver.Firefox(executable_path='./geckodriver')
-        self.driver.implicitly_wait(10)
         self.driver.get(self.__start_url)
 
         self.client_db = MongoClient()
